@@ -7,7 +7,6 @@ const helpers = require("./helpers");
 router.post("/", function(req, res, next) {
     if (req.body.name !== undefined &&
         req.body.type !== undefined &&
-        req.body.opponentUid !== undefined &&
         req.body.opponentName !== undefined &&
         req.body.opponentColor !== undefined &&
         req.body.opponentRating !== undefined) {
@@ -19,26 +18,43 @@ router.post("/", function(req, res, next) {
 
 router.post("/", function(req, res) {
     const {
-        name, type, opponentUid, opponentName, opponentColor, opponentRating
+        name, type, opponentName, opponentColor, opponentRating
     } = req.body;
 
     const game = new Game({
         name: name,
         type: type,
         opponent: {
-            uid: opponentUid,
             name: opponentName,
             color: opponentColor,
             rating: opponentRating
         }
     });
-    game.save()
-        .then(function(doc) {
-            helpers.sendRes(res, 200, "ok");
+
+    Game.findOne({name: name})
+        .then(function (result) {
+            if (result != null) {
+                helpers.sendRes(res, 400, "error", "Game with same name already exists.");
+                return;
+            }
+
+            // Game does not exist, continue.
+            game.save()
+                .then(function(doc) {
+                    res.status(200).send({
+                        status: "ok",
+                        data: doc,
+                        error: null
+                    });
+                })
+                .catch(function(error) {
+                    console.log(error);
+                    helpers.sendRes(res, 400, "error", "Could not save game");
+                });
         })
         .catch(function(error) {
             console.log(error);
-            helpers.sendRes(res, 400, "error", "Could not save game");
+            helpers.sendRes(res, 400, "error", "Error in database, check logs");
         });
 });
 

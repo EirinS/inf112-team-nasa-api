@@ -6,8 +6,8 @@ const sendRes = function(res, code, status, error) {
         status: status,
         error: error ? error : null
     });
-}
+};
 
 module.exports = {
     sendRes
-}
+};
