@@ -1,7 +1,9 @@
+const Game = require("../models/Game");
+
 let io;
 let games = {}, sockets = [];
 
-const emitToGame = function(id, msg, data) {
+const emitToGame = function (id, msg, data) {
     if (games[id] !== 2) return;
     for (let i = 0; i < sockets.length; i++) {
         if (sockets[i].gameId === id) {
@@ -10,7 +12,7 @@ const emitToGame = function(id, msg, data) {
     }
 };
 
-const sendDataToOpponent = function(gameId, data) {
+const sendDataToOpponent = function (gameId, data, socket) {
 
     // Find other game-socket and emit data
     for (let i = 0; i < sockets.length; i++) {
@@ -21,7 +23,7 @@ const sendDataToOpponent = function(gameId, data) {
     }
 };
 
-const init = function(server) {
+const init = function (server) {
 
     // Socket.io set-up
     io = require("socket.io").listen(server);
@@ -29,28 +31,34 @@ const init = function(server) {
 
     io.on("connection", (socket) => {
         console.log("Client connected...", socket.id);
-        let gameId; // Gets set once we join game.
+
+        let gameId, playerName; // Gets set once we join game.
 
         socket.on("error", function (err) {
             if (err.description) throw err.description;
             else throw err; // Or whatever you want to do
         });
 
-        socket.on("join", (id) => {
+        socket.on("join", function (id, name) {
             if (gameId === undefined) gameId = id;
-            sockets.push({socket: socket, gameId: gameId});
+            if (playerName === undefined) playerName = name;
+            sockets.push({socket: socket, gameId: gameId, playerName: playerName});
             if (games[gameId] === undefined) games[gameId] = 0;
             games[gameId]++;
 
             // Check if both players are connected; if so emit message
-            emitToGame(gameId, "message", {type: "state", msg: "ready"});
+            emitToGame(gameId, "state", {
+                msg: "ready", data: sockets.map(function (value) {
+                    return value.playerName
+                })
+            });
             console.log("Joined game " + gameId, "Count: " + games[gameId]);
         });
 
         socket.on("data", (data) => {
 
             // Find other game-socket and emit msg
-            sendDataToOpponent(gameId, data);
+            sendDataToOpponent(gameId, data, socket);
         });
 
         socket.on("disconnect", () => {
@@ -58,7 +66,7 @@ const init = function(server) {
 
             // Find socket from array
             for (let i = 0; i < sockets.length; i++) {
-                if (sockets[i].gameId === gameId && sockets[i].socket.id === socket.id)  {
+                if (sockets[i].gameId === gameId && sockets[i].socket.id === socket.id) {
 
                     // Reduce game participant count
                     //let gameId = sockets[i].gameId;
@@ -69,20 +77,15 @@ const init = function(server) {
                         // Send message to other socket
                         let j = 1 - i;
                         let otherSocket = sockets[j].socket;
-                        io.to(otherSocket.id).emit("message", {type: "opponent-dc"});
+                        io.to(otherSocket.id).emit("state", {msg: "opponent-dc"});
                     } else if (games[gameId] === 0) {
 
-                        // Connect to db and remove game from database
-                        // TODO: Remove game from list.
-                        /*MongoClient.connect(mongoUrl, function(err, db) {
-                            if (err) console.log("Unable to connect to the server", err);
-
-                            // Remove game by its id
-                            console.log("Attempting to remove " + gameId);
-                            db.collection("games").remove({"_id": gameId});
-                            db.close();
-                        });
-                        delete games[gameId];*/
+                        // Remove game from database
+                        Game.remove({_id: gameId})
+                            .then(function () {
+                                delete games[gameId];
+                            })
+                            .catch(console.log);
                     }
 
                     // Remove from sockets

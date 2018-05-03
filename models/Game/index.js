@@ -5,7 +5,7 @@ const db = require("../../db");
 const Game = db.model("Game", new Schema({
     name: {type: String, required: true},
     type: {type: String, required: true},
-    opponent: {
+    player: {
         name: {type: String, required: true},
         color: {type: String, required: true},
         rating: {type: Number, required: true}

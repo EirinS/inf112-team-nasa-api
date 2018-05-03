@@ -7,9 +7,9 @@ const helpers = require("./helpers");
 router.post("/", function(req, res, next) {
     if (req.body.name !== undefined &&
         req.body.type !== undefined &&
-        req.body.opponentName !== undefined &&
-        req.body.opponentColor !== undefined &&
-        req.body.opponentRating !== undefined) {
+        req.body.playerName !== undefined &&
+        req.body.playerColor !== undefined &&
+        req.body.playerRating !== undefined) {
         next();
     } else {
         helpers.sendRes(res, 400, "error", "Bad request");
@@ -18,16 +18,16 @@ router.post("/", function(req, res, next) {
 
 router.post("/", function(req, res) {
     const {
-        name, type, opponentName, opponentColor, opponentRating
+        name, type, playerName, playerColor, playerRating
     } = req.body;
 
     const game = new Game({
         name: name,
         type: type,
-        opponent: {
-            name: opponentName,
-            color: opponentColor,
-            rating: opponentRating
+        player: {
+            name: playerName,
+            color: playerColor,
+            rating: playerRating
         }
     });
 
